@@ -89,7 +89,7 @@ import org.apache.helix.store.zk.ZkHelixPropertyStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.pinot.controller.util.SegmentCompletionUtils.getSegmentNamePrefix;
+import com.linkedin.pinot.controller.util.SegmentCompletionUtils;
 
 
 public class PinotLLCRealtimeSegmentManager {
@@ -307,7 +307,15 @@ public class PinotLLCRealtimeSegmentManager {
 
       metadata.setCreationTime(now);
 
-      final long startOffset = getPartitionOffset(topicName, bootstrapHosts, initialOffset, i);
+      String consumerFactory;
+      try {
+        consumerFactory = _tableConfigCache.getTableConfig(realtimeTableName).getIndexingConfig().getStreamConfigs()
+            .get("kafka.consumer.factory");
+      } catch (Exception e) {
+        LOGGER.info("Caught Exception {}, could not get kafka consumer factory, defaulting to SimpleConsumerFactory", e);
+        consumerFactory = new SimpleConsumerFactory().toString();
+      }
+      final long startOffset = getPartitionOffset(topicName, bootstrapHosts, initialOffset, i, consumerFactory);
       LOGGER.info("Setting start offset for segment {} to {}", segName, startOffset);
       metadata.setStartOffset(startOffset);
       metadata.setEndOffset(END_OFFSET_FOR_CONSUMING_SEGMENTS);
@@ -533,7 +541,7 @@ public class PinotLLCRealtimeSegmentManager {
       return false;
     }
     for (File file : tableDir.listFiles()) {
-      if (file.getName().startsWith(getSegmentNamePrefix(segmentName))) {
+      if (file.getName().startsWith(SegmentCompletionUtils.getSegmentNamePrefix(segmentName))) {
         LOGGER.warn("Deleting " + file);
         FileUtils.deleteQuietly(file);
       }
@@ -873,12 +881,13 @@ public class PinotLLCRealtimeSegmentManager {
       int partitionId) {
     final String topicName = kafkaStreamMetadata.getKafkaTopicName();
     final String bootstrapHosts = kafkaStreamMetadata.getBootstrapHosts();
+    final String consumerFactory = kafkaStreamMetadata.getConsumerFactory();
 
-    return getPartitionOffset(topicName, bootstrapHosts, offsetCriteria, partitionId);
+    return getPartitionOffset(topicName, bootstrapHosts, offsetCriteria, partitionId, consumerFactory);
   }
 
-  private long getPartitionOffset(final String topicName, final String bootstrapHosts, final String offsetCriteria, int partitionId) {
-    KafkaOffsetFetcher kafkaOffsetFetcher = new KafkaOffsetFetcher(topicName, bootstrapHosts, offsetCriteria, partitionId);
+  private long getPartitionOffset(final String topicName, final String bootstrapHosts, final String offsetCriteria, int partitionId, String consumerFactory) {
+    KafkaOffsetFetcher kafkaOffsetFetcher = new KafkaOffsetFetcher(topicName, bootstrapHosts, offsetCriteria, partitionId, consumerFactory);
     RetryPolicy policy = RetryPolicies.fixedDelayRetryPolicy(3, 1000);
     boolean success = policy.attempt(kafkaOffsetFetcher);
     if (success) {
@@ -1205,11 +1214,17 @@ public class PinotLLCRealtimeSegmentManager {
     private PinotKafkaConsumerFactory _pinotKafkaConsumerFactory = new SimpleConsumerFactory();
 
 
-    private KafkaOffsetFetcher(final String topicName, final String bootstrapHosts, final String offsetCriteria, int partitionId) {
+    private KafkaOffsetFetcher(final String topicName, final String bootstrapHosts, final String offsetCriteria, int partitionId, String consumerFactory) {
       _topicName = topicName;
       _bootstrapHosts = bootstrapHosts;
       _offsetCriteria = offsetCriteria;
       _partitionId = partitionId;
+      try {
+        _pinotKafkaConsumerFactory = (PinotKafkaConsumerFactory) Class.forName(consumerFactory).newInstance();
+      } catch (Exception e) {
+        LOGGER.info("Invalid consumer factory set. Caught exception {}, setting to default SimpleConsumerFactory", e);
+        _pinotKafkaConsumerFactory = new SimpleConsumerFactory();
+      }
     }
 
     private long getOffset() {

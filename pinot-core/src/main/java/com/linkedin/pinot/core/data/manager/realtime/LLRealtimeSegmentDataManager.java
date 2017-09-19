@@ -173,7 +173,7 @@ public class LLRealtimeSegmentDataManager extends RealtimeSegmentDataManager {
   private final SegmentVersion _segmentVersion;
   private final SegmentBuildTimeLeaseExtender _leaseExtender;
   private SegmentFileAndOffset _segmentFileAndOffset;
-  private final PinotKafkaConsumerFactory _pinotKafkaConsumerFactory;
+  private PinotKafkaConsumerFactory _pinotKafkaConsumerFactory;
 
   // Segment end criteria
   private volatile long _consumeEndTime = 0;
@@ -869,10 +869,18 @@ public class LLRealtimeSegmentDataManager extends RealtimeSegmentDataManager {
     _instanceId = _realtimeTableDataManager.getServerInstance();
     _leaseExtender = SegmentBuildTimeLeaseExtender.getLeaseExtender(_instanceId);
     _protocolHandler = new ServerSegmentCompletionProtocolHandler(_instanceId);
-    _pinotKafkaConsumerFactory = new SimpleConsumerFactory();
 
     // TODO Validate configs
     IndexingConfig indexingConfig = _tableConfig.getIndexingConfig();
+
+    try {
+      String kafkaConsumerFactory = indexingConfig.getStreamConfigs().get("kafka.consumer.factory");
+      _pinotKafkaConsumerFactory = (PinotKafkaConsumerFactory) Class.forName(kafkaConsumerFactory).newInstance();
+    } catch (Exception e) {
+      LOGGER.info("No consumer factory set. Caught exception {}, setting to default SimpleConsumerFactory", e);
+      _pinotKafkaConsumerFactory = new SimpleConsumerFactory();
+    }
+
     _kafkaStreamMetadata = new KafkaStreamMetadata(indexingConfig.getStreamConfigs());
     KafkaLowLevelStreamProviderConfig kafkaStreamProviderConfig = createStreamProviderConfig();
     kafkaStreamProviderConfig.init(tableConfig, instanceZKMetadata, schema);

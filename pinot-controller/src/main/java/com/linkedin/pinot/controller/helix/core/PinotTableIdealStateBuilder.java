@@ -310,9 +310,14 @@ public class PinotTableIdealStateBuilder {
       if (bootstrapHosts == null || bootstrapHosts.isEmpty()) {
         throw new RuntimeException("Invalid value for " + Helix.DataSource.Realtime.Kafka.KAFKA_BROKER_LIST);
       }
-      // TODO: Factory should be loaded from config
-      PinotKafkaConsumerFactory _pinotKafkaConsumerFactory = new SimpleConsumerFactory();
-      PinotKafkaConsumer consumerWrapper = _pinotKafkaConsumerFactory.buildMetadataFetcher(bootstrapHosts,
+      PinotKafkaConsumerFactory pinotKafkaConsumerFactory;
+      try {
+        pinotKafkaConsumerFactory = (PinotKafkaConsumerFactory) Class.forName(_kafkaStreamMetadata.getConsumerFactory()).newInstance();
+      } catch (Exception e) {
+        LOGGER.info("No consumer factory set. Caught exception {}, setting to default SimpleConsumerFactory", e);
+        pinotKafkaConsumerFactory = new SimpleConsumerFactory();
+      }
+      PinotKafkaConsumer consumerWrapper = pinotKafkaConsumerFactory.buildMetadataFetcher(bootstrapHosts,
           PinotTableIdealStateBuilder.class.getSimpleName() + "-" + kafkaTopicName, KAFKA_CONNECTION_TIMEOUT_MILLIS);
 
       try {
