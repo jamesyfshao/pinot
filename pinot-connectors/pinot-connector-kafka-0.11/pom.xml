@@ -19,22 +19,20 @@
     under the License.
 
 -->
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>pinot-connectors</artifactId>
     <groupId>org.apache.pinot</groupId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>0.2.2.5-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
   <modelVersion>4.0.0</modelVersion>
-  <artifactId>pinot-connector-kafka-0.9</artifactId>
-  <name>Pinot Connector Kafka 0.9</name>
+  <artifactId>pinot-connector-kafka-0.11</artifactId>
+  <name>Pinot Connector Kafka 0.11</name>
   <url>https://pinot.apache.org/</url>
   <properties>
     <pinot.root>${basedir}/../..</pinot.root>
-    <kafka.lib.version>0.9.0.1</kafka.lib.version>
+    <kafka.lib.version>0.11.0.3</kafka.lib.version>
   </properties>
 
   <dependencies>
@@ -42,7 +40,7 @@
     <!-- Kafka  -->
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_2.10</artifactId>
+      <artifactId>kafka_2.11</artifactId>
       <version>${kafka.lib.version}</version>
       <exclusions>
         <exclusion>
