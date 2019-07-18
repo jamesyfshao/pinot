@@ -122,13 +122,6 @@
     <dependency>
       <groupId>org.apache.pinot</groupId>
       <artifactId>pinot-server</artifactId>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
@@ -149,37 +142,16 @@
       <artifactId>pinot-server</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
       <artifactId>pinot-controller</artifactId>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
       <artifactId>pinot-controller</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
@@ -192,37 +164,16 @@
       <artifactId>pinot-broker</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
       <artifactId>pinot-core</artifactId>
       <version>${project.version}</version>
       <type>test-jar</type>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
       <artifactId>pinot-broker</artifactId>
-      <!-- TODO: fix this -->
-      <exclusions>
-        <exclusion>
-          <groupId>org.apache.pinot</groupId>
-          <artifactId>pinot-opal</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.apache.pinot</groupId>
