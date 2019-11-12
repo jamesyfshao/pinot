@@ -31,7 +31,7 @@
 
   <groupId>org.apache.pinot</groupId>
   <artifactId>pinot</artifactId>
-  <version>0.2.2.5.58</version>
+  <version>0.2.2.5.59-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>Pinot</name>
   <description>A realtime distributed OLAP datastore</description>
@@ -97,7 +97,7 @@
 
   <scm>
     <developerConnection>scm:git:git@github.com:apache/incubator-pinot.git</developerConnection>
-    <tag>pinot-0.2.2.5.58</tag>
+    <tag>pinot-0.1.076-SNAPSHOT</tag>
   </scm>
 
   <!-- Apache project inception year for generating correct NOTICE file for jar bundle. -->
