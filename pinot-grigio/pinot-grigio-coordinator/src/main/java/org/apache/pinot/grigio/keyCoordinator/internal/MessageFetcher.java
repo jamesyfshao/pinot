@@ -140,6 +140,7 @@ public class MessageFetcher {
           LOGGER.info("no message found in kafka consumer, sleep and wait for next batch");
           Uninterruptibles.sleepUninterruptibly(_fetchMsgDelayMs, TimeUnit.MILLISECONDS);
         } else {
+          LOGGER.info("got {} messages from input topic", records.size());
           records.forEach(c -> {
             try {
               _consumerRecordBlockingQueue.put(c);
