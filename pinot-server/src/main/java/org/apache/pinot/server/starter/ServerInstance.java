@@ -25,7 +25,11 @@ import java.util.Set;
 import java.util.concurrent.atomic.LongAccumulator;
 import org.apache.helix.HelixManager;
 import org.apache.pinot.common.metrics.MetricsHelper;
+import com.google.common.collect.ImmutableList;
 import org.apache.pinot.common.metrics.ServerMetrics;
+import org.apache.pinot.grigio.common.metrics.GrigioMetrics;
+import org.apache.pinot.grigio.common.storageProvider.UpdateLogStorageProvider;
+import org.apache.pinot.grigio.common.utils.IdealStateHelper;
 import org.apache.pinot.core.data.manager.InstanceDataManager;
 import org.apache.pinot.core.operator.transform.function.TransformFunction;
 import org.apache.pinot.core.operator.transform.function.TransformFunctionFactory;
@@ -33,9 +37,18 @@ import org.apache.pinot.core.query.executor.QueryExecutor;
 import org.apache.pinot.core.query.scheduler.QueryScheduler;
 import org.apache.pinot.core.query.scheduler.QuerySchedulerFactory;
 import org.apache.pinot.core.transport.QueryServer;
+import org.apache.pinot.grigio.servers.GrigioServerMetrics;
 import org.apache.pinot.server.conf.ServerConf;
+import org.apache.pinot.core.segment.updater.SegmentUpdater;
+import org.apache.pinot.grigio.common.storageProvider.retentionManager.UpdateLogRetentionManager;
+import org.apache.pinot.grigio.common.storageProvider.retentionManager.UpdateLogRetentionManagerImpl;
+import org.apache.pinot.grigio.servers.KeyCoordinatorProvider;
+import org.apache.pinot.grigio.servers.SegmentUpdaterProvider;
+import org.apache.pinot.server.starter.helix.SegmentDeletionHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.pinot.common.utils.CommonConstants.Grigio.PINOT_UPSERT_SERVER_COMPONENT_PREFIX;
 
 
 /**
@@ -45,6 +58,7 @@ import org.slf4j.LoggerFactory;
 public class ServerInstance {
   private static final Logger LOGGER = LoggerFactory.getLogger(ServerInstance.class);
 
+  private final ServerConf _serverConf;
   private final ServerMetrics _serverMetrics;
   private final InstanceDataManager _instanceDataManager;
   private final QueryExecutor _queryExecutor;
@@ -52,12 +66,21 @@ public class ServerInstance {
   private final QueryScheduler _queryScheduler;
   private final QueryServer _queryServer;
 
+  // upsert related component, only initialize if necessary
+  private GrigioMetrics _grigioMetrics;
+  private KeyCoordinatorProvider _keyCoordinatorProvider;
+  private SegmentUpdaterProvider _updaterProvider;
+  private UpdateLogRetentionManager _retentionManager;
+  private SegmentUpdater _segmentUpdater;
+  private SegmentDeletionHandler _segmentDeletionHandler;
+
   private boolean _started = false;
 
-  public ServerInstance(ServerConf serverConf, HelixManager helixManager)
+  public ServerInstance(ServerConf serverConf, HelixManager helixManager, String clusterName, String instanceName)
       throws Exception {
     LOGGER.info("Initializing server instance");
 
+    _serverConf = serverConf;
     LOGGER.info("Initializing server metrics");
     MetricsHelper.initializeMetrics(serverConf.getMetricsConfig());
     MetricsRegistry metricsRegistry = new MetricsRegistry();
@@ -97,12 +120,28 @@ public class ServerInstance {
     }
     TransformFunctionFactory.init(transformFunctionClasses);
 
+    if (serverConf.isUpsertEnabled()) {
+      LOGGER.info("starting pinot server upsert components");
+      maybeInitGrigioMetrics(metricsRegistry);
+      initVirtualColumnStorageProvider();
+      _keyCoordinatorProvider = buildKeyCoordinatorProvider();
+      _updaterProvider = buildSegmentUpdaterProvider();
+      _retentionManager = new UpdateLogRetentionManagerImpl(
+          new IdealStateHelper(helixManager.getClusterManagmentTool(), clusterName), instanceName);
+      _segmentUpdater = buildSegmentUpdater(_updaterProvider, _retentionManager);
+      _segmentDeletionHandler = new SegmentDeletionHandler(ImmutableList.of(_segmentUpdater));
+    } else {
+      _segmentDeletionHandler = new SegmentDeletionHandler();
+      LOGGER.info("starting pinot server without upsert component");
+    }
+
     LOGGER.info("Finish initializing server instance");
   }
 
   public synchronized void start() {
     // This method is called when Helix starts a new ZK session, and can be called multiple times. We only need to start
     // the server instance once, and simply ignore the following invocations.
+    LOGGER.info("Starting server instance");
     if (_started) {
       LOGGER.info("Server instance is already running, skipping the start");
       return;
@@ -133,6 +172,10 @@ public class ServerInstance {
     _queryScheduler.stop();
     LOGGER.info("Shutting down query executor");
     _queryExecutor.shutDown();
+    if (_serverConf.isUpsertEnabled()) {
+      LOGGER.info("shutting down key coordinator");
+      _keyCoordinatorProvider.close();
+    }
     LOGGER.info("Shutting down instance data manager");
     _instanceDataManager.shutDown();
 
@@ -146,6 +189,54 @@ public class ServerInstance {
 
   public InstanceDataManager getInstanceDataManager() {
     return _instanceDataManager;
+  }
+
+  private void maybeInitGrigioMetrics(MetricsRegistry metricsRegistry) {
+    if (_serverConf.isUpsertEnabled()) {
+      _grigioMetrics = new GrigioServerMetrics(_serverConf.getMetricsPrefix() + PINOT_UPSERT_SERVER_COMPONENT_PREFIX,
+              metricsRegistry);
+      _grigioMetrics.initializeGlobalMeters();
+    }
+  }
+
+  public KeyCoordinatorProvider buildKeyCoordinatorProvider() {
+    return new KeyCoordinatorProvider(_serverConf.getUpsertKcProviderConfig(), _serverConf.getPinotServerHostname(), _grigioMetrics);
+  }
+
+  public SegmentUpdaterProvider buildSegmentUpdaterProvider() {
+    return new SegmentUpdaterProvider(_serverConf.getUpsertSegmentUpdateProviderConfig(), _serverConf.getPinotServerHostname(), _grigioMetrics);
+  }
+
+  public SegmentUpdater buildSegmentUpdater(SegmentUpdaterProvider updateProvider,
+                                            UpdateLogRetentionManager updateLogRetentionManager) {
+    return new SegmentUpdater(_serverConf.getUpsertSegmentUpdaterConfig(), updateProvider, updateLogRetentionManager,
+            _grigioMetrics);
+  }
+
+  public void initVirtualColumnStorageProvider() {
+    UpdateLogStorageProvider.init(_serverConf.getUpsertSegmentStorageProviderConfig());
+  }
+
+  public void maybeStartSegmentUpdater() {
+    if (_segmentUpdater != null) {
+      _segmentUpdater.start();
+      LOGGER.info("started segment updater");
+    }
+  }
+
+  public boolean isUpsertEnabled() {
+    return _serverConf.isUpsertEnabled();
+  }
+
+  public void maybeStopSegmentUpdater() {
+    if (_segmentUpdater != null) {
+      LOGGER.info("Shutting down segment updater");
+      _segmentUpdater.shutdown();
+    }
+  }
+
+  public SegmentDeletionHandler getSegmentDeletionHandler() {
+    return _segmentDeletionHandler;
   }
 
   public long getLatestQueryTime() {

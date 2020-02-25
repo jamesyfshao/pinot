@@ -45,6 +45,14 @@ public class ServerConf {
 
   private static final String PINOT_QUERY_SCHEDULER_PREFIX = "pinot.query.scheduler";
 
+  // upsert related config
+  private static final String PINOT_SERVER_UPSERT_KC_PROVIDER = "pinot.server.upsert.kc";
+  private static final String PINOT_SERVER_UPSERT_UPDATER = "pinot.server.upsert.updater";
+  private static final String PINOT_SERVER_UPSERT_UPDATE_PROVIDER = "pinot.server.upsert.updaterProvider";
+  private static final String PINOT_SERVER_UPSERT_ENABLE = "pinot.server.upsert.enabled";
+  private static final String PINOT_SERVER_UPSERT_STORAGE = "pinot.server.upsert.storage";
+  private static final String PINOT_SERVER_HOSTNAME = "pinot.hostname";
+
   private Configuration _serverConf;
 
   public ServerConf(Configuration serverConfig) {
@@ -90,6 +98,30 @@ public class ServerConf {
 
   public Configuration getSchedulerConfig() {
     return _serverConf.subset(PINOT_QUERY_SCHEDULER_PREFIX);
+  }
+
+  public Configuration getUpsertKcProviderConfig() {
+    return _serverConf.subset(PINOT_SERVER_UPSERT_KC_PROVIDER);
+  }
+
+  public boolean isUpsertEnabled() {
+    return _serverConf.getBoolean(PINOT_SERVER_UPSERT_ENABLE, false);
+  }
+
+  public Configuration getUpsertSegmentUpdaterConfig() {
+    return _serverConf.subset(PINOT_SERVER_UPSERT_UPDATER);
+  }
+
+  public Configuration getUpsertSegmentUpdateProviderConfig() {
+    return _serverConf.subset(PINOT_SERVER_UPSERT_UPDATE_PROVIDER);
+  }
+
+  public Configuration getUpsertSegmentStorageProviderConfig() {
+    return _serverConf.subset(PINOT_SERVER_UPSERT_STORAGE);
+  }
+
+  public String getPinotServerHostname() {
+    return _serverConf.getString(PINOT_SERVER_HOSTNAME);
   }
 
   /**

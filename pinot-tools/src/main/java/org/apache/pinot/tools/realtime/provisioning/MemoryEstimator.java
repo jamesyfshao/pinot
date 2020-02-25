@@ -18,11 +18,6 @@
  */
 package org.apache.pinot.tools.realtime.provisioning;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.pinot.common.config.TableConfig;
@@ -32,12 +27,19 @@ import org.apache.pinot.common.metadata.segment.RealtimeSegmentZKMetadata;
 import org.apache.pinot.spi.utils.DataSize;
 import org.apache.pinot.spi.data.readers.GenericRow;
 import org.apache.pinot.core.data.readers.PinotSegmentRecordReader;
+import org.apache.pinot.core.indexsegment.mutable.MutableAppendSegmentImpl;
 import org.apache.pinot.core.indexsegment.mutable.MutableSegmentImpl;
 import org.apache.pinot.core.io.readerwriter.RealtimeIndexOffHeapMemoryManager;
 import org.apache.pinot.core.io.writer.impl.DirectMemoryManager;
 import org.apache.pinot.core.realtime.impl.RealtimeSegmentConfig;
 import org.apache.pinot.core.realtime.impl.RealtimeSegmentStatsHistory;
 import org.apache.pinot.core.segment.index.SegmentMetadataImpl;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 
 /**
@@ -125,7 +127,8 @@ public class MemoryEstimator {
 
     // create a config
     RealtimeSegmentConfig.Builder realtimeSegmentConfigBuilder =
-        new RealtimeSegmentConfig.Builder().setSegmentName(_segmentMetadata.getName())
+        new RealtimeSegmentConfig.Builder().setTableName(_tableConfig.getTableName())
+            .setSegmentName(_segmentMetadata.getName())
             .setStreamName(_tableNameWithType).setSchema(_segmentMetadata.getSchema())
             .setCapacity(_segmentMetadata.getTotalDocs()).setAvgNumMultiValues(_avgMultiValues)
             .setNoDictionaryColumns(_noDictionaryColumns)
@@ -226,7 +229,8 @@ public class MemoryEstimator {
       RealtimeSegmentZKMetadata segmentZKMetadata = getRealtimeSegmentZKMetadata(_segmentMetadata, totalDocs);
 
       RealtimeSegmentConfig.Builder realtimeSegmentConfigBuilder =
-          new RealtimeSegmentConfig.Builder().setSegmentName(_segmentMetadata.getName())
+          new RealtimeSegmentConfig.Builder().setTableName(_tableConfig.getTableName())
+              .setSegmentName(_segmentMetadata.getName())
               .setStreamName(_tableNameWithType).setSchema(_segmentMetadata.getSchema())
               .setCapacity(totalDocs).setAvgNumMultiValues(_avgMultiValues)
               .setNoDictionaryColumns(_noDictionaryColumns)
