@@ -186,7 +186,6 @@ public abstract class MutableSegmentImpl implements MutableSegment {
         }
       } else {
         virtualFieldSpecs.add(fieldSpec);
-
       }
     }
     _physicalFieldSpecs = Collections.unmodifiableCollection(physicalFieldSpecs);
@@ -302,7 +301,7 @@ public abstract class MutableSegmentImpl implements MutableSegment {
       }
     }
 
-    for (FieldSpec fieldSpec : _physicalFieldSpecs) {
+    for (FieldSpec fieldSpec : virtualFieldSpecs) {
       String column = fieldSpec.getName();
       VirtualColumnContext virtualColumnContext = new VirtualColumnContext(fieldSpec, _capacity, true);
       final VirtualColumnProvider provider =
