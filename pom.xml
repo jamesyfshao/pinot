@@ -1287,6 +1287,11 @@
             <exclude>**/normalize*</exclude>
             <exclude>**/handlebars*</exclude>
             <exclude>**/beautify*</exclude>
+
+            <!-- Uber specific stuff -->
+            <exclude>.arcconfig</exclude>
+            <exclude>.jenkins/*</exclude>
+            <exclude>UBER_README.md</exclude>
           </excludes>
           <mapping>
             <thrift>JAVADOC_STYLE</thrift>
@@ -1369,6 +1374,11 @@
 
             <!-- Third eye (not part of the distribution) -->
             <exclude>thirdeye/**</exclude>
+
+            <!-- Uber specific stuff -->
+            <exclude>.arcconfig</exclude>
+            <exclude>.jenkins/*</exclude>
+            <exclude>UBER_README.md</exclude>
           </excludes>
         </configuration>
       </plugin>
