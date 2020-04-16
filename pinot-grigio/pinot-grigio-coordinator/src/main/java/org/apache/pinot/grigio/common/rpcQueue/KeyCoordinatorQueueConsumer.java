@@ -24,7 +24,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.pinot.grigio.common.CoordinatorConfig;
-import org.apache.pinot.grigio.common.DistributedCommonUtils;
+import org.apache.pinot.grigio.common.utils.DistributedCommonUtils;
 import org.apache.pinot.grigio.common.config.CommonConfig;
 import org.apache.pinot.grigio.common.messages.KeyCoordinatorQueueMsg;
 import org.apache.pinot.grigio.common.metrics.GrigioMetrics;
@@ -66,12 +66,12 @@ public class KeyCoordinatorQueueConsumer extends KafkaQueueConsumer<byte[], KeyC
   }
 
   @Override
-  public void subscribeForTable(String tableName, String topicPrefix) {
+  public void subscribe(String topic) {
     // nothing as key coordinator don't subscribe for table
   }
 
   @Override
-  public void unsubscribeForTable(String tableName, String topicPrefix) {
+  public void unsubscribe(String topic) {
     // nothing as key coordinator don't subscribe for table
   }
 

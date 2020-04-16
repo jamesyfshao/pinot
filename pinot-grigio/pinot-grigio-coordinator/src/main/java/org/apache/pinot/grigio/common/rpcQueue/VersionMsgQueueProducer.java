@@ -24,7 +24,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.pinot.grigio.common.CoordinatorConfig;
-import org.apache.pinot.grigio.common.DistributedCommonUtils;
+import org.apache.pinot.grigio.common.utils.DistributedCommonUtils;
 import org.apache.pinot.grigio.common.FixedPartitionCountIntPartitioner;
 import org.apache.pinot.grigio.common.config.CommonConfig;
 import org.apache.pinot.grigio.common.messages.KeyCoordinatorQueueMsg;

@@ -18,7 +18,6 @@
  */
 package org.apache.pinot.grigio.common.utils;
 
-import com.google.common.base.Preconditions;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationConverter;
 import org.slf4j.Logger;
@@ -38,11 +37,6 @@ public class CommonUtils {
 
   public static Properties getPropertiesFromConf(Configuration conf) {
     return ConfigurationConverter.getProperties(conf);
-  }
-
-  public static String getTableNameFromKafkaTopic(String topic, String topicPrefix) {
-    Preconditions.checkState(topic.length() > topicPrefix.length(), "kafka topic is not valid");
-    return topic.substring(topicPrefix.length());
   }
 
 }

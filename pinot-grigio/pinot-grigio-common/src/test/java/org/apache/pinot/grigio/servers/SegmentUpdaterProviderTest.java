@@ -69,11 +69,11 @@ public class SegmentUpdaterProviderTest {
     }
 
     @Override
-    public void subscribeForTable(String tableName, String topicPrefix) {
+    public void subscribe(String topic) {
     }
 
     @Override
-    public void unsubscribeForTable(String tableName, String topicPrefix) {
+    public void unsubscribe(String topic) {
     }
 
     @Override

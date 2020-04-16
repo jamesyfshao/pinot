@@ -64,6 +64,9 @@ public class KeyCoordinatorConf extends PropertiesConfiguration {
   private static final String KC_MESSAGE_TOPIC = "kc.message.topic";
   private static final String KC_MESSAGE_PARTITION_COUNT = "kc.message.partition.count";
 
+  public static final String CONFIG_KC_OUTPUT_TOPIC_USE_SINGLE_TOPIC = "kc.output.topic.singleTopic";
+  public static final boolean DEFAULT_KC_OUTPUT_TOPIC_USE_SINGLE_TOPIC = true;
+  public static final String KC_OUTPUT_TOPIC_CONFIG = "kc.output.topic.name";
   public static final String KC_OUTPUT_TOPIC_PREFIX_KEY = "kc.output.topic.prefix";
 
   // helix related cofig
@@ -115,6 +118,14 @@ public class KeyCoordinatorConf extends PropertiesConfiguration {
 
   public int getPort() {
     return this.subset(SERVER_CONFIG).getInt(KeyCoordinatorConf.PORT, KeyCoordinatorConf.PORT_DEFAULT);
+  }
+
+  public boolean getUseSingleTopic() {
+    return this.getBoolean(CONFIG_KC_OUTPUT_TOPIC_USE_SINGLE_TOPIC, DEFAULT_KC_OUTPUT_TOPIC_USE_SINGLE_TOPIC);
+  }
+
+  public String getOutputTopic() {
+    return this.getString(KC_OUTPUT_TOPIC_CONFIG);
   }
 
   public String getTopicPrefix() {

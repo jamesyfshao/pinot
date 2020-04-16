@@ -36,7 +36,7 @@ import org.apache.pinot.grigio.common.storageProvider.UpdateLogEntry;
 import org.apache.pinot.grigio.common.storageProvider.UpdateLogStorageProvider;
 import org.apache.pinot.grigio.common.storageProvider.retentionManager.UpdateLogRetentionManager;
 import org.apache.pinot.grigio.common.storageProvider.retentionManager.UpdateLogTableRetentionManager;
-import org.apache.pinot.grigio.common.utils.CommonUtils;
+import org.apache.pinot.grigio.common.utils.OutputTopicBuilder;
 import org.apache.pinot.grigio.servers.SegmentUpdaterProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +71,7 @@ public class SegmentUpdater implements SegmentDeletionListener {
 
   private final Configuration _conf;
   private final int _updateSleepMs;
-  private final String _topicPrefix;
+  private final OutputTopicBuilder _outputTopicBuilder;
   private final ExecutorService _ingestionExecutorService;
   private final QueueConsumer _consumer;
   private final SegmentUpdaterDataManagerHolder _dataManagersHolder = new SegmentUpdaterDataManagerHolder();
@@ -87,7 +87,13 @@ public class SegmentUpdater implements SegmentDeletionListener {
     _conf = conf;
     _metrics = metrics;
     _retentionManager = retentionManager;
-    _topicPrefix = conf.getString(SegmentUpdaterConfig.INPUT_TOPIC_PREFIX);
+    _outputTopicBuilder = new OutputTopicBuilder(
+        conf.getBoolean(SegmentUpdaterConfig.CONFIG_SINGLE_INPUT_TOPIC_NAME,
+            SegmentUpdaterConfig.DEFAULT_USE_SINGLE_INPUT_TOPIC),
+        conf.getString(SegmentUpdaterConfig.INPUT_TOPIC_PREFIX),
+        conf.getString(SegmentUpdaterConfig.CONFIG_SINGLE_INPUT_TOPIC_NAME));
+
+
     _updateSleepMs = conf.getInt(SegmentUpdaterConfig.SEGMENT_UDPATE_SLEEP_MS,
         SegmentUpdaterConfig.SEGMENT_UDPATE_SLEEP_MS_DEFAULT);
     UpsertWaterMarkManager.init(metrics);
@@ -147,14 +153,24 @@ public class SegmentUpdater implements SegmentDeletionListener {
         int eventCount = records.size();
         _metrics.addMeteredGlobalValue(GrigioMeter.MESSAGE_FETCH_PER_ROUND, eventCount);
 
-        final Map<String, TableUpdateLogs> tableSegmentToUpdateLogs = new HashMap<>();
-        // organize the update logs by {tableName: {segmentName: {list of updatelogs}}}
+        // first organize update logs by segments
+        final Map<String, List<UpdateLogEntry>> segmentsToUpdateLogs = new HashMap<>();
         records.iterator().forEachRemaining(consumerRecord -> {
-          TableUpdateLogs tableUpdateLogs = tableSegmentToUpdateLogs.computeIfAbsent(
-              CommonUtils.getTableNameFromKafkaTopic(consumerRecord.getTopic(), _topicPrefix),
-              t -> new TableUpdateLogs());
-          tableUpdateLogs.addUpdateLogEntry(consumerRecord.getRecord(), consumerRecord.getPartition());
+          List<UpdateLogEntry> updateLogEntries = segmentsToUpdateLogs.computeIfAbsent(
+              consumerRecord.getRecord().getSegmentName(),
+              t -> new ArrayList<>());
+          updateLogEntries.add(new UpdateLogEntry(consumerRecord.getRecord(), consumerRecord.getPartition()));
         });
+
+        // then organize the update logs by {tableName: {segmentName: {list of updatelogs}}}
+        final Map<String, TableUpdateLogs> tableSegmentToUpdateLogs = new HashMap<>();
+        for (Map.Entry<String, List<UpdateLogEntry>> entry: segmentsToUpdateLogs.entrySet()) {
+          String segmentName = entry.getKey();
+          String tableName = new LLCSegmentName(segmentName).getTableName();
+          TableUpdateLogs tableUpdateLogs = tableSegmentToUpdateLogs.computeIfAbsent(tableName,
+              t -> new TableUpdateLogs());
+          tableUpdateLogs.addSegmentUpdateLogEntry(segmentName, entry.getValue());
+        }
 
         startTime = System.currentTimeMillis();
         AtomicLong timeToStoreUpdateLogs = new AtomicLong(0);
@@ -269,7 +285,7 @@ public class SegmentUpdater implements SegmentDeletionListener {
     LOGGER.info("subscribing to new table {}", tableNameWithType);
     // init the retention manager to ensure we get the first ideal state
     _retentionManager.getRetentionManagerForTable(tableNameWithType);
-    _consumer.subscribeForTable(TableNameBuilder.extractRawTableName(tableNameWithType), _topicPrefix);
+    _consumer.subscribe(_outputTopicBuilder.getOutputTopic(TableNameBuilder.extractRawTableName(tableNameWithType)));
   }
 
   /**
@@ -279,7 +295,7 @@ public class SegmentUpdater implements SegmentDeletionListener {
   private void handleTableRemovalInServer(String tableNameWithType) {
     LOGGER.info("unsubscribe to old table {}", tableNameWithType);
     // key coordinator generate message without table name
-    _consumer.unsubscribeForTable(TableNameBuilder.extractRawTableName(tableNameWithType), _topicPrefix);
+    _consumer.unsubscribe(_outputTopicBuilder.getOutputTopic(TableNameBuilder.extractRawTableName(tableNameWithType)));
   }
 
   @Override
@@ -313,21 +329,17 @@ public class SegmentUpdater implements SegmentDeletionListener {
     private Map<String, List<UpdateLogEntry>> _segments2UpdateLog;
 
     public TableUpdateLogs() {
-                                 _segments2UpdateLog = new HashMap<>();
-                                                                       }
+      _segments2UpdateLog = new HashMap<>();
+    }
 
     public Map<String, List<UpdateLogEntry>> getSegments2UpdateLog() {
       return Collections.unmodifiableMap(_segments2UpdateLog);
     }
 
     // Partition is the partition where the record appears in the Segment Update Event message queue.
-    public void addUpdateLogEntry(LogCoordinatorMessage record, int partition) {
-      if (record == null || record.getSegmentName() == null) {
-        LOGGER.error("Empty update log or no segment in the entry: {}", record);
-        return;
-      }
-      _segments2UpdateLog.computeIfAbsent(
-              record.getSegmentName(), s -> new ArrayList<>()).add(new UpdateLogEntry(record, partition));
+    public void addSegmentUpdateLogEntry(String segmentName, List<UpdateLogEntry> updateLogEntries) {
+      Preconditions.checkState(!_segments2UpdateLog.containsKey(segmentName));
+      _segments2UpdateLog.put(segmentName, updateLogEntries);
     }
 
     public List<UpdateLogEntry> get(String segmentNameStr) {

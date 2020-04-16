@@ -28,7 +28,7 @@ import org.apache.pinot.grigio.common.messages.LogCoordinatorMessage;
 import org.apache.pinot.grigio.common.metrics.GrigioMetrics;
 import org.apache.pinot.grigio.common.utils.CommonUtils;
 import org.apache.pinot.grigio.common.CoordinatorConfig;
-import org.apache.pinot.grigio.common.DistributedCommonUtils;
+import org.apache.pinot.grigio.common.utils.DistributedCommonUtils;
 import org.apache.pinot.grigio.common.FixedPartitionCountIntPartitioner;
 
 import java.util.Properties;

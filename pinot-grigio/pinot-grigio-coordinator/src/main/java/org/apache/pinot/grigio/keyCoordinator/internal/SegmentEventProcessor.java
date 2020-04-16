@@ -23,7 +23,6 @@ import com.google.common.base.Preconditions;
 import org.apache.commons.configuration.Configuration;
 import org.apache.pinot.common.config.TableNameBuilder;
 import org.apache.pinot.common.utils.CommonConstants;
-import org.apache.pinot.grigio.common.DistributedCommonUtils;
 import org.apache.pinot.grigio.common.keyValueStore.ByteArrayWrapper;
 import org.apache.pinot.grigio.common.keyValueStore.KeyValueStoreDB;
 import org.apache.pinot.grigio.common.keyValueStore.KeyValueStoreTable;
@@ -43,6 +42,7 @@ import org.apache.pinot.grigio.common.storageProvider.UpdateLogStorageProvider;
 import org.apache.pinot.grigio.common.storageProvider.retentionManager.UpdateLogRetentionManager;
 import org.apache.pinot.grigio.common.storageProvider.retentionManager.UpdateLogTableRetentionManager;
 import org.apache.pinot.grigio.common.updateStrategy.MessageResolveStrategy;
+import org.apache.pinot.grigio.common.utils.OutputTopicBuilder;
 import org.apache.pinot.grigio.keyCoordinator.GrigioKeyCoordinatorMetrics;
 import org.apache.pinot.grigio.keyCoordinator.helix.State;
 import org.apache.pinot.grigio.keyCoordinator.starter.KeyCoordinatorConf;
@@ -82,9 +82,9 @@ public class SegmentEventProcessor {
   protected UpdateLogRetentionManager _retentionManager;
   protected GrigioKeyCoordinatorMetrics _metrics;
   protected VersionMessageManager _versionMessageManager;
+  protected OutputTopicBuilder _outputTopicBuilder;
 
   // config provided param
-  protected String _topicPrefix;
   protected ExecutorService _service;
 
   protected volatile State _state;
@@ -118,8 +118,9 @@ public class SegmentEventProcessor {
     _retentionManager = updateLogRetentionManager;
     _versionMessageManager = versionMessageManager;
     _metrics = metrics;
+
     // get config
-    _topicPrefix = conf.getTopicPrefix();
+    _outputTopicBuilder = new OutputTopicBuilder(conf.getUseSingleTopic(), conf.getTopicPrefix(), conf.getOutputTopic());
     _service = Executors.newFixedThreadPool(conf.getInt(PROCESS_THREAD_COUNT, PROCESS_THREAD_COUNT_DEFAULT));
 
     _state = State.INIT;
@@ -189,7 +190,7 @@ public class SegmentEventProcessor {
       List<ProduceTask<Integer, LogCoordinatorMessage>> tasks = new ArrayList<>();
       Map<ByteArrayWrapper, KeyCoordinatorMessageContext> primaryKeyToValueMap = fetchDataFromKVStore(tableName, msgList);
       processMessageUpdates(tableName, msgList, primaryKeyToValueMap, tasks);
-      List<ProduceTask<Integer, LogCoordinatorMessage>> failedTasks = sendMessagesToLogCoordinator(tasks, 10, TimeUnit.SECONDS);
+      List<ProduceTask<Integer, LogCoordinatorMessage>> failedTasks = sendMessagesToOutput(tasks, 10, TimeUnit.SECONDS);
       if (failedTasks.size() > 0) {
         LOGGER.error("send to producer failed: {}", failedTasks.size());
       }
@@ -209,10 +210,10 @@ public class SegmentEventProcessor {
    * key will be the same across ingestion upsert event and segment update event topics.
    * TODO: remove name referring log coordinator
    */
-  protected ProduceTask<Integer, LogCoordinatorMessage> createMessageToLogCoordinator(String tableName, String segmentName,
-                                                                                    long oldKafkaOffset, long value,
-                                                                                    LogEventType eventType, int partition) {
-    return new ProduceTask<>(DistributedCommonUtils.getKafkaTopicFromTableName(tableName, _topicPrefix),
+  protected ProduceTask<Integer, LogCoordinatorMessage> createMessageToOutput(String tableName, String segmentName,
+                                                                              long oldKafkaOffset, long value,
+                                                                              LogEventType eventType, int partition) {
+    return new ProduceTask<>(_outputTopicBuilder.getOutputTopic(tableName),
         partition, new LogCoordinatorMessage(segmentName, oldKafkaOffset, value, eventType));
   }
 
@@ -270,18 +271,18 @@ public class SegmentEventProcessor {
           // the existing message we have is older than the message we just processed, create delete for it
           if (tableRetentionManager.shouldIngestForSegment(oldContext.getSegmentName())) {
             // only generate delete event if the segment is still valid
-            tasks.add(createMessageToLogCoordinator(tableName, oldContext.getSegmentName(), oldContext.getKafkaOffset(),
+            tasks.add(createMessageToOutput(tableName, oldContext.getSegmentName(), oldContext.getKafkaOffset(),
                 msg.getVersion(), LogEventType.DELETE, msg.getPartition()));
           }
           // update the local cache to the latest message, so message within the same batch can override each other
           primaryKeyToValueMap.put(key, currentContext);
-          tasks.add(createMessageToLogCoordinator(tableName, currentContext.getSegmentName(), currentContext.getKafkaOffset(),
+          tasks.add(createMessageToOutput(tableName, currentContext.getSegmentName(), currentContext.getKafkaOffset(),
               msg.getVersion(), LogEventType.INSERT, msg.getPartition()));
         }
       } else {
         // no key in the existing map, adding this key to the running set
         primaryKeyToValueMap.put(key, currentContext);
-        tasks.add(createMessageToLogCoordinator(tableName, currentContext.getSegmentName(), currentContext.getKafkaOffset(),
+        tasks.add(createMessageToOutput(tableName, currentContext.getSegmentName(), currentContext.getKafkaOffset(),
             msg.getVersion(), LogEventType.INSERT, msg.getPartition()));
       }
     }
@@ -297,7 +298,7 @@ public class SegmentEventProcessor {
    * @param timeUnit the timeunit for waiting for the producers
    * @return a list of the tasks we failed to produce to downstream
    */
-  protected List<ProduceTask<Integer, LogCoordinatorMessage>> sendMessagesToLogCoordinator(
+  protected List<ProduceTask<Integer, LogCoordinatorMessage>> sendMessagesToOutput(
       List<ProduceTask<Integer, LogCoordinatorMessage>> tasks, long timeout, TimeUnit timeUnit) {
     long startTime = System.currentTimeMillis();
     // send all and wait for result, batch for better perf

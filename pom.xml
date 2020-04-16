@@ -1371,6 +1371,7 @@
 
             <!-- Pinot-Druid Benchmark (not part of the distribution) -->
             <exclude>contrib/**</exclude>
+            <exclude>**/*.iml</exclude>
 
             <!-- Third eye (not part of the distribution) -->
             <exclude>thirdeye/**</exclude>

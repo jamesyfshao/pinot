@@ -16,18 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.pinot.grigio.common;
+package org.apache.pinot.grigio.common.utils;
 
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.pinot.grigio.common.CoordinatorConfig;
 import org.apache.pinot.grigio.keyCoordinator.starter.KeyCoordinatorConf;
 
 import java.util.Properties;
 
 public class DistributedCommonUtils {
-
-  public static String getKafkaTopicFromTableName(String tableName, String topicPrefix) {
-    return topicPrefix + tableName;
-  }
 
   public static String getClientId(String hostName) {
     return KeyCoordinatorConf.KAFKA_CLIENT_ID_PREFIX + hostName;

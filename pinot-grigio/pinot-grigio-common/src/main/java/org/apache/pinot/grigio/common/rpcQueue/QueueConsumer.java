@@ -29,9 +29,9 @@ public interface QueueConsumer<K, V> {
 
   void init(Configuration conf, GrigioMetrics metrics);
 
-  void subscribeForTable(String tableName, String topicPrefix);
+  void subscribe(String topic);
 
-  void unsubscribeForTable(String tableName, String topicPrefix);
+  void unsubscribe(String topic);
 
   List<QueueConsumerRecord<K, V>> getRequests(long timeout, TimeUnit timeUnit);
 

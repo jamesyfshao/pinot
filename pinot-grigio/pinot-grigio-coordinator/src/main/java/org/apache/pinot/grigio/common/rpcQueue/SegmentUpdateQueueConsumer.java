@@ -28,7 +28,7 @@ import org.apache.pinot.grigio.common.CoordinatorConfig;
 import org.apache.pinot.grigio.common.messages.LogCoordinatorMessage;
 import org.apache.pinot.grigio.common.metrics.GrigioMetrics;
 import org.apache.pinot.grigio.common.utils.CommonUtils;
-import org.apache.pinot.grigio.common.DistributedCommonUtils;
+import org.apache.pinot.grigio.common.utils.DistributedCommonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,17 +62,15 @@ public class SegmentUpdateQueueConsumer extends KafkaQueueConsumer<String, LogCo
   }
 
   @Override
-  public void subscribeForTable(String tableName, String topicPrefix) {
-    String topicName = DistributedCommonUtils.getKafkaTopicFromTableName(tableName, topicPrefix);
-    LOGGER.info("subscribing for table {}, kafka topic {}", tableName, topicName);
-    this.subscribe(topicName);
+  public void subscribe(String topic) {
+    LOGGER.info("subscribing for kafka topic {}", topic);
+    this.subscribe(topic);
   }
 
   @Override
-  public void unsubscribeForTable(String tableName, String topicPrefix) {
-    String topicName = DistributedCommonUtils.getKafkaTopicFromTableName(tableName, topicPrefix);
-    LOGGER.info("unsubscribing for table {}, kafka topic {}", tableName, topicName);
-    this.unsubscribe(topicName);
+  public void unsubscribe(String topic) {
+    LOGGER.info("unsubscribing kafka topic {}", topic);
+    this.unsubscribe(topic);
   }
 
   @Override
