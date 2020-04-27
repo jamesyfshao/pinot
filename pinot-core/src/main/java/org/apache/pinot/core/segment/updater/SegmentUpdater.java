@@ -88,7 +88,7 @@ public class SegmentUpdater implements SegmentDeletionListener {
     _metrics = metrics;
     _retentionManager = retentionManager;
     _outputTopicBuilder = new OutputTopicBuilder(
-        conf.getBoolean(SegmentUpdaterConfig.CONFIG_SINGLE_INPUT_TOPIC_NAME,
+        conf.getBoolean(SegmentUpdaterConfig.CONFIG_USE_SINGLE_INPUT_TOPIC,
             SegmentUpdaterConfig.DEFAULT_USE_SINGLE_INPUT_TOPIC),
         conf.getString(SegmentUpdaterConfig.INPUT_TOPIC_PREFIX),
         conf.getString(SegmentUpdaterConfig.CONFIG_SINGLE_INPUT_TOPIC_NAME));

@@ -31,11 +31,11 @@ public class OutputTopicBuilder {
     if (_useSingleTopic) {
       _outputTopic = topic;
       Preconditions.checkState(StringUtils.isNotEmpty(_outputTopic),
-          "key coordinator output topic is empty while configured to use single topic");
+          "output topic is empty while configured to use single topic");
     } else {
       _topicPrefix = prefix;
-      Preconditions.checkState(StringUtils.isNotEmpty(_outputTopic),
-          "key coordinator output topic prefix is empty while configured to use multiple topic");
+      Preconditions.checkState(StringUtils.isNotEmpty(_topicPrefix),
+          "output topic prefix is empty while configured to use multiple topic");
     }
   }
 

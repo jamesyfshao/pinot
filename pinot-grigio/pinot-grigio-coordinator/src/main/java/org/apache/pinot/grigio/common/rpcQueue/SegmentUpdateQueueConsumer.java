@@ -62,18 +62,6 @@ public class SegmentUpdateQueueConsumer extends KafkaQueueConsumer<String, LogCo
   }
 
   @Override
-  public void subscribe(String topic) {
-    LOGGER.info("subscribing for kafka topic {}", topic);
-    this.subscribe(topic);
-  }
-
-  @Override
-  public void unsubscribe(String topic) {
-    LOGGER.info("unsubscribing kafka topic {}", topic);
-    this.unsubscribe(topic);
-  }
-
-  @Override
   protected KafkaConsumer<String, LogCoordinatorMessage> getConsumer() {
     Preconditions.checkState(_consumer != null, "consumer is not initialized yet");
     return _consumer;
